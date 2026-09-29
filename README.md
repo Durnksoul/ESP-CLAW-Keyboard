@@ -1,201 +1,41 @@
-<div align="center">
+# ESP-CLAW-Keyboard
 
-  <a href="https://esp-claw.com/en/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="./docs/src/assets/logos/logo-f.svg" />
-      <source media="(prefers-color-scheme: light)" srcset="./docs/src/assets/logos/logo.svg" />
-      <img alt="ESP-Claw logo" src="./docs/src/assets/logos/logo.svg" width="50%" />
-    </picture>
-  </a>
+基于 **ESP32-S3** 和 [ESP-Claw](https://github.com/espressif/esp-claw) 的九键桌面键盘项目。当前样机通过 USB-C 作为电脑的 USB 键盘使用；项目目标是让用户通过微信发一句话，就能修改九个按键的快捷键或宏，无需重新编译固件。
 
-  <h1>ESP-Claw 🦞 AI Agent Framework for IoT Devices</h1>
+> 当前是开发中的功能原型。**USB 九键输入和设备接收微信消息已在样机上分别验证；“微信修改按键宏”尚未实现。**
 
-  <h3>💬 Chat as Creation · 🚀 Millisecond Response · 🧩 Smart and Extensible · 😋 Grows with You</h3>
+## 当前可以做什么
 
-  <p>
-    <a href="https://www.espressif.com">
-      <img src="https://img.shields.io/badge/runs_on-ESP32_Series-red?style=flat-square" alt="Runs on ESP32 Series" />
-    </a>
-    <a href="./LICENSE">
-      <img src="https://img.shields.io/github/license/espressif/esp-claw?style=flat-square" alt="License" />
-    </a>
-  </p>
+- 3×3 九个按键通过板上的 USB-C 向电脑输入数字 **1–9**，已由用户在实物上验证。
+- 固件扫描按键矩阵，完成消抖，并通过 USB HID 发送键盘按键。
+- 沿用 ESP-Claw 的联网、Web 配置和微信消息通路；设备接收微信消息已由用户验证。
 
-  <a href="https://esp-claw.com/en/">Home</a>
-  |
-  <a href="https://esp-claw.com/en/tutorial/">Docs</a>
-  |
-  <a href="https://esp-claw.com/en/flash/">Online Flashing</a>
-  |
-  <a href="https://esp-claw.com/en/reference-project/build-from-source/">Build from Source</a>
-  |
-  <a href="./README_CN.md">简体中文</a>
+当前九个键的映射仍固定在源码中。旋钮和 RGB 灯暂未启用；微信消息目前也不能直接更改键位。
 
-</div>
+## 计划中的宏键盘体验
 
-**ESP-Claw** is Espressif's **Chat Coding** AI agent framework for IoT devices. It defines device behavior through conversation and completes the full loop of sensing, decision-making, and execution locally on Espressif chips. Inspired by the OpenClaw concept and reimplemented in C, ESP-Claw is lightweight, intelligent, and continuously evolving. With just an ESP32-series chip that costs only a few dollars, you can experience what makes ESP-Claw so nimble.
+目标是让用户发送“把左上角改成 Ctrl+Shift+S”这样的微信消息。设备识别键位和动作，保存设置并回复结果；之后按左上角就发送对应快捷键，断电重连后仍然有效。
 
-<div align="center">
-  <img alt="From traditional IoT to Edge Agent" src="./docs/static/from-traditional-iot-to-edge-agent.webp" width="90%" />
-</div>
+首批计划支持普通按键、组合快捷键和按顺序执行的按键宏。已保存的宏应在设备离线时照常工作。打开电脑上任意安装的软件需要电脑知道该软件的位置，因此会另行评估 Windows 快捷方式热键或轻量电脑端程序。
 
-## 🌟 Key Features
+## 硬件与代码
 
-Traditional IoT usually stops at connectivity: devices can connect to the network, but they cannot think; they can execute commands, but they cannot make decisions. ESP-Claw brings the Agent Runtime down onto Espressif chips, turning them from passive executors into active decision-making centers.
+- 主控：ESP32-S3 N16R8 开发板；键盘 PCB 为 3×3 矩阵。
+- 矩阵行：GPIO4、GPIO5、GPIO6；矩阵列：GPIO11、GPIO10、GPIO9；按键低电平触发。
+- USB 键盘代码：[keyboard_hid.c](application/edge_agent/components/keyboard_hid/keyboard_hid.c)。
+- 固件入口：[main.c](application/edge_agent/main/main.c)。
+- 微信消息接收：[cap_im_wechat.c](components/claw_capabilities/cap_im_platform/src/cap_im_wechat.c)。
 
-<table align="center">
-  <tr>
-    <th><div align="center"> 💬 Chat as Creation </div></th>
-    <th><div align="center"> ⚙️ Event Driven </div></th>
-  </tr>
-  <tr>
-    <th>
-      <div align="center">
-        IM chat + dynamic Lua loading
-        <br />
-        Ordinary users can define device behavior without programming
-      </div>
-    </th>
-    <th>
-      <div align="center">
-        Any event can trigger the Agent Loop and more
-        <br />
-        Response can be as fast as milliseconds
-      </div>
-    </th>
-  </tr>
-  <tr>
-    <th width="45%">
-      <video src="https://github.com/user-attachments/assets/717a4dae-fbd3-4364-afca-2d45432f156e" />
-    </th>
-    <th width="45%">
-      <video src="https://github.com/user-attachments/assets/5a274a4a-e1dc-4c13-81aa-fb1c22d470bf" />
-    </th>
-  </tr>
+## 目前怎样使用
 
-  <tr>
-    <td colspan="2"><!-- spacer row --></td>
-  </tr>
+1. 将适配该 ESP32-S3 键盘的固件烧录到开发板，并通过板上的 USB-C 接入电脑。
+2. 打开任意文本输入框，依次按九个键；当前默认输入为从左到右、从上到下的 **1–9**。
+3. 如需使用设备的联网、Web 控制台和微信消息通路，按 [ESP-Claw 官方配置教程](https://esp-claw.com/zh-cn/tutorial/web-config/)完成配置。微信收消息已可用于后续宏功能开发，但当前还不能通过微信改键。
 
-  <tr>
-    <th><div align="center"> 🧬 Structured Memory </div></th>
-    <th><div align="center"> 📤 MCP Communication </div></th>
-  </tr>
-  <tr>
-    <th>
-      <div align="center">
-        Organize memories in a structured way
-        <br />
-        Privacy stays off the cloud
-      </div>
-    </th>
-    <th>
-      <div align="center">
-        Supports standard MCP devices
-        <br />
-        Works as both Server and Client
-      </div>
-    </th>
-  </tr>
-  <tr>
-    <th width="45%">
-      <video src="https://github.com/user-attachments/assets/2c8bcaa4-3606-49d3-9b70-86ad3234d48f" />
-    </th>
-    <th width="45%">
-      <video src="https://github.com/user-attachments/assets/b1f71cee-e428-4b92-ad7e-d7816839f866" />
-    </th>
-  </tr>
+固件应用位于 `application/edge_agent`，使用 ESP-IDF 构建。本仓库的 `idf-claw.cmd` 是当前开发机的构建脚本，内含本机 ESP-IDF 和 Python 的绝对路径；在其他电脑使用前需要调整这些路径。ESP-Claw 的通用构建与配置说明见[官方文档](https://esp-claw.com/zh-cn/tutorial/)。
 
-  <tr>
-    <td colspan="2"><!-- spacer row --></td>
-  </tr>
+## 项目来源
 
-  <tr>
-    <th><div align="center"> 🧰 Ready Out of the Box </div></th>
-    <th><div align="center"> 🧩 Component Extensibility </div></th>
-  </tr>
-  <tr>
-    <th>
-      <div align="center">
-        Quick setup with Board Manager
-        <br />
-        Supports one-click flashing
-      </div>
-    </th>
-    <th>
-      <div align="center">
-        Every module can be trimmed as needed
-        <br />
-        You can also add your own component integrations
-      </div>
-    </th>
-  </tr>
-</table>
+本项目衍生自乐鑫的 [ESP-Claw 原仓库](https://github.com/espressif/esp-claw)。ESP-Claw 在这里提供设备应用、联网、Web 配置及微信消息等基础能力；本项目在此基础上开发九键矩阵扫描、USB HID 键盘和后续的微信可配置宏功能。ESP-Claw 的完整功能、支持板卡和通用使用方法请以[其官方文档](https://esp-claw.com/zh-cn/)为准。
 
-## 📦 Quick Start
-
-<div align="center">
-  <img src="docs/src/assets/images/claw-breadboard-photo.jpg" width="80%" alt="ESP-Claw on ESP32-S3 Breadboard" />
-</div>
-
-ESP-Claw now supports a wide range of development boards based on ESP32-S3, ESP32-P4, ESP32-C5, and ESP32-S31, including breadboards, M5Stack CoreS3, and many others. Supported boards in [`./application/edge_agent/boards/`](./application/edge_agent/boards/) can be flashed online directly: configuration and flashing are done entirely in the browser, with no need to compile firmware locally or install a development environment first.
-
-<div align="center">
-  <a href="https://esp-claw.com/en/flash/">
-    <img src="./docs/static/flash-via-browser-button.svg" width="200" />
-  </a>
-</div>
-
-You can also build ESP-Claw locally. Please refer to the [local build documentation](https://esp-claw.com/en/tutorial/) for board adaptation, building, and flashing. Boards not listed above, as well as chips like the ESP32-P4, can also be supported through local builds and flashing.
-
-You can find practical examples in our [documentation](https://esp-claw.com/en/tutorial/).
-
-### Supported Platforms
-
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./docs/static/claw-providers-white.webp" />
-    <source media="(prefers-color-scheme: light)" srcset="./docs/static/claw-providers-black.webp" />
-    <img alt="Supported Platforms" src="./docs/static/claw-providers-black.webp" width="90%" />
-  </picture>
-</div>
-
-**LLM**: ESP-Claw now supports both OpenAI-style APIs and Anthropic-style APIs. It natively supports GPT models from OpenAI, Qwen models from Alibaba Cloud Bailian, Claude models from Anthropic, DeepSeek models from DeepSeek API, and also supports custom endpoints.
-
-> [!TIP]
->
-> ESP-Claw's self-programming capability depends on models with strong tool use and instruction-following ability. We recommend `gpt-5.4`, `qwen3.6-plus`, `claude4.6-sonnet`, `deepseek-v4-pro` or models with comparable capability.
-
-**IM**: ESP-Claw supports Telegram, QQ, Feishu, and WeChat, and can be extended further.
-
-## Development Plan
-
-ESP-Claw is still under active development. Feel free to open an issue to report problems or request features. You can also share your ideas through our [online survey (in Chinese)](https://fcn5wbhnyubf.feishu.cn/share/base/form/shrcndYcjbGFY1ymttTSyYoGIPh).
-
-[Click here to view our TODO List (in Chinese)](https://fcn5wbhnyubf.feishu.cn/wiki/SRlgwWUYei4WmykU8uMcUtzTnFf?table=tblWSgzWcyW7jv7B&view=vewaP9B0KX) and vote for the features or issues you care about. That helps us prioritize them sooner.
-
-## Security
-
-ESP-Claw is not currently included in the Espressif Bug Bounty Program. Responsible vulnerability reports remain highly valued, but no monetary reward is promised or guaranteed under this policy.
-
-## 📷 Follow Us
-
-If this project helps you, please consider giving it a star. ⭐⭐⭐⭐⭐
-
-### Star History
-
-<div align="center">
-  <a href="https://www.star-history.com/?repos=espressif%2Fesp-claw&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=espressif/esp-claw&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=espressif/esp-claw&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=espressif/esp-claw&type=date&legend=top-left" />
-  </picture>
-  </a>
-</div>
-
-## Acknowledgements
-
-Inspired by [OpenClaw](https://github.com/openclaw/openclaw).
-
-The implementation of Agent Loop, IM communication, and related capabilities on ESP32 also draws on [MimiClaw](https://github.com/memovai/mimiclaw).
+本仓库保留原项目的 [Apache-2.0 许可证](LICENSE)。
