@@ -10,8 +10,9 @@
       "name": "default",
       "displayName": "Default (development)",
       "description": "Development configuration",
-      "binaryDir": "${fileDir}/build/default",
+      "binaryDir": "${fileDir}/build/keyboard",
       "cacheVariables": {
+        "CCACHE_ENABLE": "0",
         "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig"
       },
       "generator": "Ninja",
@@ -30,6 +31,7 @@
       "description": "Production configuration",
       "binaryDir": "${fileDir}/build/production",
       "cacheVariables": {
+        "CCACHE_ENABLE": "0",
         "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig"
       },
       "generator": "Ninja",

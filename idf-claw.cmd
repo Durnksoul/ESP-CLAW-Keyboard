@@ -10,7 +10,7 @@ set "PATH=%IDF_PYTHON_ENV_PATH%\Scripts;%PATH%"
 cd /d "%~dp0application\edge_agent"
 call "D:\esp\v5.5.4\esp-idf\export.bat"
 if errorlevel 1 exit /b %errorlevel%
-"%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "D:\esp\v5.5.4\esp-idf\tools\idf.py" -B "%~dp0build\default" %*
+"%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "D:\esp\v5.5.4\esp-idf\tools\idf.py" --no-ccache -B "%~dp0build\keyboard" %*
 exit /b %errorlevel%
 
 

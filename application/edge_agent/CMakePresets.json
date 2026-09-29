@@ -22,13 +22,14 @@
         "NO_PROXY": "localhost,127.0.0.1,components-file.espressif.cn"
       },
       "cacheVariables": {
+        "CCACHE_ENABLE": "0",
         "CMAKE_MAKE_PROGRAM": "C:/Espressif/tools/ninja/1.12.1/ninja.exe",
         "PYTHON_DEPS_CHECKED": "1",
         "ESP_PLATFORM": "1",
         "SDKCONFIG": "${sourceDir}/sdkconfig",
         "PYTHON": "C:/Espressif/tools/python/v5.5.4/venv/Scripts/python.exe"
       },
-      "binaryDir": "${sourceDir}/../../build/default",
+      "binaryDir": "${sourceDir}/../../build/keyboard",
       "displayName": "ESP-Claw ESP32-S3 N16R8",
       "name": "default",
       "generator": "Ninja"

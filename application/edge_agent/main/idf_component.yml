@@ -7,6 +7,9 @@ dependencies:
   app_claw:
     path: ../../../components/common/app_claw
 
+  keyboard_hid:
+    path: ../components/keyboard_hid
+
   app_config:
     path: ../components/app_config
 

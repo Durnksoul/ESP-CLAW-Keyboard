@@ -21,6 +21,7 @@
 #include "esp_check.h"
 #include "esp_system.h"
 #include "esp_board_manager_includes.h"
+#include "keyboard_hid.h"
 #include "captive_dns.h"
 #include "cmd_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -329,6 +330,7 @@ void app_main(void)
     app_config_to_claw(s_config, s_claw_config);
     init_timezone(app_config_get_timezone(s_config)); // no need to check error
     ESP_ERROR_CHECK(esp_board_manager_init());
+    ESP_ERROR_CHECK(keyboard_hid_start());
     ESP_ERROR_CHECK(app_fs_init());
 
     /* Publish the resolved storage roots so any component can compose paths
