@@ -1,0 +1,46 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default (development)",
+      "description": "Development configuration",
+      "binaryDir": "${fileDir}/build/default",
+      "cacheVariables": {
+        "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig"
+      },
+      "generator": "Ninja",
+      "environment": {
+        "IDF_PATH": "D:/esp/v5.5.4/esp-idf",
+        "PYTHONUTF8": "1",
+        "IDF_TOOLS_PATH": "C:/Espressif",
+        "IDF_COMPONENT_STORAGE_URL": "https://components-file.espressif.cn",
+        "IDF_COMPONENT_API_TIMEOUT": "60",
+        "NO_PROXY": "localhost,127.0.0.1,components-file.espressif.cn"
+      }
+    },
+    {
+      "name": "production",
+      "displayName": "Production",
+      "description": "Production configuration",
+      "binaryDir": "${fileDir}/build/production",
+      "cacheVariables": {
+        "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig"
+      },
+      "generator": "Ninja",
+      "environment": {
+        "IDF_PATH": "D:/esp/v5.5.4/esp-idf",
+        "PYTHONUTF8": "1",
+        "IDF_TOOLS_PATH": "C:/Espressif",
+        "IDF_COMPONENT_STORAGE_URL": "https://components-file.espressif.cn",
+        "IDF_COMPONENT_API_TIMEOUT": "60",
+        "NO_PROXY": "localhost,127.0.0.1,components-file.espressif.cn"
+      }
+    }
+  ]
+}

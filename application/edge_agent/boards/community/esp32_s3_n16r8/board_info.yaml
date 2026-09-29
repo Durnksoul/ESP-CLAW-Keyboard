@@ -1,0 +1,5 @@
+board: esp32_s3_n16r8
+chip: esp32s3
+description: "ESP32-S3 N16R8 (16 MB Flash, 8 MB Octal PSRAM)"
+manufacturer: "ESPRESSIF"
+
