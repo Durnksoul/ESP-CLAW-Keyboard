@@ -223,6 +223,10 @@ esp_err_t claw_core_llm_chat_messages(claw_core_handle_t core,
     esp_err_t err = claw_core_llm_ensure_runtime_locked(core, out_error_message);
     if (err == ESP_OK) {
         err = claw_llm_runtime_chat(core->llm_runtime, &request, out_response, out_error_message);
+        if (err == ESP_OK) {
+            strlcpy(out_response->usage_model, core->llm_config.model ? core->llm_config.model : "",
+                    sizeof(out_response->usage_model));
+        }
     }
     if (core->llm_lock) {
         xSemaphoreGive(core->llm_lock);

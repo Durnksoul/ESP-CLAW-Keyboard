@@ -301,6 +301,7 @@ void claw_core_agent_loop_task(void *arg)
             }
 
             claw_core_control_set_phase(core, CLAW_CORE_AGENT_LOOP_PHASE_IN_LLM_HTTP);
+            response.view.llm_calls++;
             err = claw_core_llm_chat_messages(core,
                                               system_prompt,
                                               messages,
@@ -327,6 +328,18 @@ void claw_core_agent_loop_task(void *arg)
                     }
                 }
                 goto finish_request;
+            }
+
+            if (response.view.llm_calls == 1) {
+                strlcpy(response.view.usage_model, llm_response.usage_model,
+                        sizeof(response.view.usage_model));
+            } else if (strcmp(response.view.usage_model, llm_response.usage_model) != 0) {
+                strlcpy(response.view.usage_model, "(mixed)", sizeof(response.view.usage_model));
+            }
+            if (llm_response.usage_available) {
+                response.view.input_tokens += llm_response.input_tokens;
+                response.view.output_tokens += llm_response.output_tokens;
+                response.view.usage_reported_calls++;
             }
 
             if (llm_response.tool_call_count == 0) {

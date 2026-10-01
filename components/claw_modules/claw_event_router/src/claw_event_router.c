@@ -1907,6 +1907,25 @@ static esp_err_t claw_event_router_execute_send_message_action(
     cJSON_AddStringToObject(payload_root, "chat_id", chat_id);
     cJSON_AddStringToObject(payload_root, "message", message);
     cJSON_AddStringToObject(payload_root, "event_type", event->event_type);
+    cJSON_AddStringToObject(payload_root, "rule_id", rule->id);
+    if (event->payload_json && strcmp(event->source_cap, "claw_core") == 0) {
+        cJSON *metadata = cJSON_Parse(event->payload_json);
+        const char *names[] = {"request_id", "usage"};
+        for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+            cJSON *item = cJSON_GetObjectItemCaseSensitive(metadata, names[i]);
+            if (item) {
+                cJSON *copy = cJSON_Duplicate(item, true);
+                if (!copy || !cJSON_AddItemToObject(payload_root, names[i], copy)) {
+                    cJSON_Delete(copy);
+                    cJSON_Delete(metadata);
+                    cJSON_Delete(payload_root);
+                    cJSON_Delete(rendered_input);
+                    return ESP_ERR_NO_MEM;
+                }
+            }
+        }
+        cJSON_Delete(metadata);
+    }
     payload = cJSON_PrintUnformatted(payload_root);
     cJSON_Delete(payload_root);
     if (!payload) {

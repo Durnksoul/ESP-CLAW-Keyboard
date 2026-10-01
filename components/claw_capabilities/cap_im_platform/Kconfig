@@ -1,0 +1,23 @@
+menu "WeChat reply usage and cost"
+    depends on APP_CLAW_CAP_IM_WECHAT
+
+config WECHAT_USAGE_PRICE_MODEL
+    string "Exact model name for price estimate"
+    default ""
+    help
+        Must match the runtime model name. Empty disables cost estimates.
+        Update these prices when the provider changes its pricing.
+
+config WECHAT_USAGE_INPUT_PRICE
+    string "Input price per million tokens"
+    default ""
+
+config WECHAT_USAGE_OUTPUT_PRICE
+    string "Output price per million tokens"
+    default ""
+
+config WECHAT_USAGE_CURRENCY
+    string "Price currency (e.g. CNY or USD)"
+    default "CNY"
+
+endmenu

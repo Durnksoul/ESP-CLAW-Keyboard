@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "llm/claw_llm_http_transport.h"
+#include "llm/claw_llm_usage.h"
 #include "llm/media/claw_media_pipeline.h"
 
 typedef struct {
@@ -105,6 +106,8 @@ static esp_err_t parse_chat_response(const char *body,
         *out_error_message = dup_printf("Failed to parse LLM JSON response");
         return ESP_FAIL;
     }
+
+    claw_llm_usage_parse(root, false, out_response);
 
     choices = cJSON_GetObjectItem(root, "choices");
     choice0 = choices && cJSON_IsArray(choices) ? cJSON_GetArrayItem(choices, 0) : NULL;

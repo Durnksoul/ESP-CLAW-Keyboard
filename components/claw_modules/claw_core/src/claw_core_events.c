@@ -49,6 +49,16 @@ static esp_err_t build_response_payload_json(const claw_core_request_t *request,
         return ESP_ERR_NO_MEM;
     }
 
+    cJSON *usage = cJSON_AddObjectToObject(root, "usage");
+    if (!usage ||
+            !cJSON_AddNumberToObject(usage, "input_tokens", (double)response->input_tokens) ||
+            !cJSON_AddNumberToObject(usage, "output_tokens", (double)response->output_tokens) ||
+            !cJSON_AddNumberToObject(usage, "calls", response->llm_calls) ||
+            !cJSON_AddNumberToObject(usage, "reported_calls", response->usage_reported_calls) ||
+            !cJSON_AddStringToObject(usage, "model", response->usage_model)) {
+        cJSON_Delete(root);
+        return ESP_ERR_NO_MEM;
+    }
     payload_json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     if (!payload_json) {
@@ -211,6 +221,9 @@ esp_err_t claw_core_publish_stage_text(const claw_core_request_t *request, const
         return err;
     }
 
+    char stage_payload[48];
+    snprintf(stage_payload, sizeof(stage_payload), "{\"request_id\":%" PRIu32 "}", request->request_id);
+    event.payload_json = stage_payload;
     esp_err_t pub_err = claw_event_router_publish(&event);
     if (pub_err != ESP_OK) {
         ESP_LOGW(TAG, "request=%" PRIu32 " failed to publish stage event: %s",

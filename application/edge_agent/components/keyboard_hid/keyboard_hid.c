@@ -4,6 +4,8 @@
  * 3x3 keyboard matrix and USB HID for the DIY ESP32-S3 keyboard.
  */
 #include "keyboard_hid.h"
+#include "keyboard_macro.h"
+#include "esp_timer.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -23,10 +25,10 @@
 #define KEYBOARD_KEYS             (KEYBOARD_ROWS * KEYBOARD_COLS)
 #define SCAN_PERIOD_MS            5
 #define DEBOUNCE_SAMPLES          4
-#define HID_KEY_SLOTS             6
-#define HID_ERROR_ROLLOVER       0x01
 #define HID_REPORT_LENGTH         8
 #define HID_CONFIG_TOTAL_LENGTH   (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
+
+_Static_assert(KEYBOARD_KEYS == KEYBOARD_MACRO_KEYS, "matrix and macro key counts must match");
 
 static const char *TAG = "keyboard_hid";
 
@@ -40,15 +42,7 @@ static const gpio_num_t s_cols[KEYBOARD_COLS] = {
     GPIO_NUM_11, GPIO_NUM_10, GPIO_NUM_9,
 };
 
-/* Physical key IDs are 1..9, left to right and top to bottom.
- * IDs identify switch positions and stay unchanged if outputs are remapped.
- * Index 0 is unused so the table can be addressed by key ID.
- */
-static const uint8_t s_keycodes[KEYBOARD_KEYS + 1] = {
-    [1] = HID_KEY_1, [2] = HID_KEY_2, [3] = HID_KEY_3,
-    [4] = HID_KEY_4, [5] = HID_KEY_5, [6] = HID_KEY_6,
-    [7] = HID_KEY_7, [8] = HID_KEY_8, [9] = HID_KEY_9,
-};
+static keyboard_macro_handle_t s_macros;
 
 static const uint8_t s_hid_report_descriptor[] = {
     TUD_HID_REPORT_DESC_KEYBOARD(),
@@ -116,25 +110,12 @@ static uint16_t scan_matrix(void)
     return pressed;
 }
 
-static bool send_keyboard_report(uint16_t pressed)
+static bool send_keyboard_report(const keyboard_macro_report_t *report)
 {
-    uint8_t keycodes[HID_KEY_SLOTS] = {0};
-    unsigned count = 0;
-    for (unsigned key_id = 1; key_id <= KEYBOARD_KEYS; ++key_id) {
-        if (pressed & ((uint16_t)1U << (key_id - 1))) {
-            if (count < HID_KEY_SLOTS) {
-                keycodes[count] = s_keycodes[key_id];
-            }
-            ++count;
-        }
-    }
-    if (count > HID_KEY_SLOTS) {
-        memset(keycodes, HID_ERROR_ROLLOVER, sizeof(keycodes));
-    }
-    if (tud_hid_keyboard_report(0, 0, keycodes)) {
-        s_last_report[0] = 0;
+    if (tud_hid_keyboard_report(0, report->modifiers, report->keys)) {
+        s_last_report[0] = report->modifiers;
         s_last_report[1] = 0;
-        memcpy(&s_last_report[2], keycodes, sizeof(keycodes));
+        memcpy(&s_last_report[2], report->keys, sizeof(report->keys));
         return true;
     }
     return false;
@@ -145,7 +126,7 @@ static void keyboard_task(void *arg)
     (void)arg;
     uint8_t debounce[KEYBOARD_KEYS] = {0};
     uint16_t stable = 0;
-    uint16_t sent = 0;
+    keyboard_macro_report_t sent = {0};
     bool sent_valid = false;
 
     while (true) {
@@ -169,12 +150,17 @@ static void keyboard_task(void *arg)
             }
         }
 
-        if (!tud_mounted()) {
+        const uint32_t now = esp_timer_get_time() / 1000;
+        const bool mounted = tud_mounted();
+        keyboard_macro_report_t report;
+        const bool force = keyboard_macro_poll(s_macros, stable, now, mounted, &report);
+        if (!mounted) {
             sent_valid = false;
-        } else if (tud_hid_ready() && (!sent_valid || sent != stable)) {
-            if (send_keyboard_report(stable)) {
-                sent = stable;
+        } else if (tud_hid_ready() && (force || !sent_valid || memcmp(&sent, &report, sizeof(report)))) {
+            if (send_keyboard_report(&report)) {
+                sent = report;
                 sent_valid = true;
+                keyboard_macro_sent(s_macros, now);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(SCAN_PERIOD_MS));
@@ -183,6 +169,10 @@ static void keyboard_task(void *arg)
 
 esp_err_t keyboard_hid_start(void)
 {
+    esp_err_t init_err = keyboard_macro_create(&s_macros);
+    if (init_err != ESP_OK) { return init_err; }
+    init_err = keyboard_macro_register_ai(s_macros);
+    if (init_err != ESP_OK) { keyboard_macro_delete(s_macros); s_macros = NULL; return init_err; }
     for (unsigned i = 0; i < KEYBOARD_ROWS; ++i) {
         const gpio_config_t config = {
             .pin_bit_mask = 1ULL << s_rows[i],

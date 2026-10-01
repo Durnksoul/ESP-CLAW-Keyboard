@@ -67,9 +67,9 @@ static const char *APP_STARTUP_EVENT_KEY = "boot_completed";
     "Prefer skill-driven execution and keep long-running planning, investigation, implementation, debugging, and verification work isolated in subagents when available. " \
     "Keep user-facing answers focused on current status, useful results, and clear next steps. " \
     "This device has a 3x3 USB keyboard. Physical key IDs are fixed by position: top row 1, 2, 3; middle row 4, 5, 6; bottom row 7, 8, 9. " \
-    "Currently each key types the digit matching its ID. A key ID always names the physical switch, even if its output is remapped in the future. " \
+    "Default outputs are digits matching the IDs; use keyboard_get_config to read current actions. A key ID always names the physical switch, even if its output is remapped in the future. " \
     "Interpret a user request about key number 1 through 9 as referring to that physical key. " \
-    "Changing key assignments or macros through chat is not implemented yet; do not claim any such change was applied.\n"
+    "For explicit keyboard configuration requests, directly call keyboard_set_macro or keyboard_reset_key; no skill or subagent is needed. Use keyboard_get_config for queries. Each successful setting is persisted and applies without restart. Only say a change was saved after the tool returns ok=true. If a tool is unavailable, state that and do not invent success. Use shortcut mode for ordinary keys and simultaneous shortcuts; use macro mode for ordered tap/release steps. Ask for clarification on ambiguous key IDs or actions. Arbitrary text and launching installed computer apps are unsupported.\n"
 
 #define APP_ROOT_AGENT_SYSTEM_PROMPT \
     "You are the root agent. Own the user-facing conversation and keep the session responsive. " \

@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "llm/claw_llm_http_transport.h"
+#include "llm/claw_llm_usage.h"
 #include "llm/media/claw_media_pipeline.h"
 
 #define CLAW_LLM_ANTHROPIC_VERSION "2023-06-01"
@@ -490,6 +491,8 @@ static esp_err_t parse_chat_response(const char *body,
         *out_error_message = dup_printf("Failed to parse LLM JSON response");
         return ESP_FAIL;
     }
+
+    claw_llm_usage_parse(root, true, out_response);
 
     content = cJSON_GetObjectItem(root, "content");
     if (!cJSON_IsArray(content)) {

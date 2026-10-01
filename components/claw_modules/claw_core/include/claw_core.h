@@ -169,6 +169,11 @@ struct claw_core_response {
     char *target_chat_id;
     char *text;
     char *error_message;
+    uint64_t input_tokens;
+    uint64_t output_tokens;
+    uint32_t llm_calls;
+    uint32_t usage_reported_calls;
+    char usage_model[64];
 };
 
 typedef struct {

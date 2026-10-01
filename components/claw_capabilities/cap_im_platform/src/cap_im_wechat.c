@@ -8,6 +8,8 @@
 
 #include <ctype.h>
 #include <inttypes.h>
+#include <math.h>
+#include "sdkconfig.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +46,6 @@ static const char *TAG = "cap_im_wechat";
 #define CAP_IM_WECHAT_DEDUP_CACHE_SIZE 64
 #define CAP_IM_WECHAT_CONTEXT_CACHE_SIZE 32
 #define CAP_IM_WECHAT_STAGE_CACHE_SIZE 32
-#define CAP_IM_WECHAT_STAGE_LIMIT 5
 #define CAP_IM_WECHAT_PATH_BUF_SIZE 256
 #define CAP_IM_WECHAT_NAME_BUF_SIZE 96
 #define CAP_IM_WECHAT_URL_BUF_SIZE 384
@@ -79,12 +80,13 @@ typedef struct {
 
 typedef struct {
     char chat_id[72];
-    uint8_t consecutive_stage_count;
+    uint32_t request_id;
+    bool thinking_sent;
 } cap_im_wechat_stage_entry_t;
 
 typedef enum {
     CAP_IM_WECHAT_STAGE_SEND_ORIGINAL = 0,
-    CAP_IM_WECHAT_STAGE_SEND_LIMIT_NOTICE = 1,
+    CAP_IM_WECHAT_STAGE_SEND_THINKING = 1,
     CAP_IM_WECHAT_STAGE_SKIP = 2,
 } cap_im_wechat_stage_send_mode_t;
 
@@ -412,46 +414,94 @@ static cap_im_wechat_stage_entry_t *cap_im_wechat_stage_entry_find_or_create(con
     return &s_wechat.stage_cache[slot];
 }
 
-static cap_im_wechat_stage_send_mode_t cap_im_wechat_stage_send_mode_for_event(const char *chat_id,
-                                                                               const char *event_type)
+/* Show one placeholder for each request; never forward reasoning text to WeChat. */
+static cap_im_wechat_stage_send_mode_t cap_im_wechat_stage_send_mode_for_event(
+    const char *chat_id, const char *event_type, uint32_t request_id, bool working_reply)
 {
-    cap_im_wechat_stage_entry_t *entry = NULL;
-
-    if (!chat_id || !chat_id[0]) {
-        return CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
-    }
-
+    bool stage = event_type && strcmp(event_type, "agent_stage") == 0;
     if (cap_im_wechat_lock() != ESP_OK) {
-        ESP_LOGW(TAG, "stage limiter lock failed for chat=%s; sending message", chat_id);
-        return CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
+        return working_reply ? CAP_IM_WECHAT_STAGE_SEND_THINKING :
+               stage ? CAP_IM_WECHAT_STAGE_SKIP : CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
     }
-
-    entry = cap_im_wechat_stage_entry_find_or_create(chat_id);
-    if (!entry) {
-        cap_im_wechat_unlock();
-        return CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
+    cap_im_wechat_stage_entry_t *entry = cap_im_wechat_stage_entry_find_or_create(chat_id);
+    cap_im_wechat_stage_send_mode_t mode = CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
+    if (working_reply) {
+        if (entry) {
+            entry->request_id = 0; /* Adopt the following agent request ID. */
+            entry->thinking_sent = true;
+        }
+        mode = CAP_IM_WECHAT_STAGE_SEND_THINKING;
+    } else if (stage) {
+        mode = CAP_IM_WECHAT_STAGE_SKIP;
+        if (entry && entry->thinking_sent && !entry->request_id) {
+            entry->request_id = request_id;
+        } else if (entry && (!entry->thinking_sent || entry->request_id != request_id)) {
+            entry->request_id = request_id;
+            entry->thinking_sent = true;
+            mode = CAP_IM_WECHAT_STAGE_SEND_THINKING;
+        }
+    } else if (entry && event_type && strcmp(event_type, "out_message") == 0 &&
+               entry->request_id == request_id) {
+        entry->thinking_sent = false;
     }
-
-    if (event_type && strcmp(event_type, "agent_stage") == 0) {
-        if (entry->consecutive_stage_count < UINT8_MAX) {
-            entry->consecutive_stage_count++;
-        }
-        if (entry->consecutive_stage_count <= CAP_IM_WECHAT_STAGE_LIMIT) {
-            cap_im_wechat_unlock();
-            return CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
-        }
-        if (entry->consecutive_stage_count == CAP_IM_WECHAT_STAGE_LIMIT + 1) {
-            cap_im_wechat_unlock();
-            return CAP_IM_WECHAT_STAGE_SEND_LIMIT_NOTICE;
-        }
-        cap_im_wechat_unlock();
-        return CAP_IM_WECHAT_STAGE_SKIP;
-    } else {
-        entry->consecutive_stage_count = 0;
-    }
-
     cap_im_wechat_unlock();
-    return CAP_IM_WECHAT_STAGE_SEND_ORIGINAL;
+    return mode;
+}
+
+static bool cap_im_wechat_price(const char *text, double *out)
+{
+    char *end = NULL;
+    double value = strtod(text, &end);
+    if (!text[0] || !end || *end || !isfinite(value) || value < 0) {
+        return false;
+    }
+    *out = value;
+    return true;
+}
+
+/* Statistics come from the API, not from the AI-generated answer. */
+static char *cap_im_wechat_message_with_usage(const char *message, cJSON *usage)
+{
+    if (!cJSON_IsObject(usage)) {
+        return NULL;
+    }
+    int calls = cap_im_wechat_int_value(cJSON_GetObjectItemCaseSensitive(usage, "calls"), 0);
+    int reported = cap_im_wechat_int_value(cJSON_GetObjectItemCaseSensitive(usage, "reported_calls"), 0);
+    uint64_t input = (uint64_t)cap_im_wechat_int64_value(cJSON_GetObjectItemCaseSensitive(usage, "input_tokens"), 0);
+    uint64_t output = (uint64_t)cap_im_wechat_int64_value(cJSON_GetObjectItemCaseSensitive(usage, "output_tokens"), 0);
+    const char *model = cap_im_wechat_string_value(cJSON_GetObjectItemCaseSensitive(usage, "model"));
+    double input_price = 0, output_price = 0;
+    char *result = malloc(strlen(message) + 384);
+    if (!result) {
+        return NULL;
+    }
+    size_t capacity = strlen(message) + 384;
+    int off = snprintf(result, capacity, "%s\n\n", message);
+    if (!calls) {
+        snprintf(result + off, capacity - off, "本次未调用模型：0 token，费用 0。");
+    } else if (!reported) {
+        snprintf(result + off, capacity - off, "本次用量：接口未返回 token，费用无法估算。");
+    } else {
+        off += snprintf(result + off, capacity - off,
+                        "本次%s：%" PRIu64 " token（输入 %" PRIu64 "，输出 %" PRIu64 "）",
+                        reported == calls ? "用量" : "已知部分用量", input + output, input, output);
+        if (reported != calls) {
+            snprintf(result + off, capacity - off, "\n有调用未返回用量，费用无法估算。");
+        } else if (!CONFIG_WECHAT_USAGE_PRICE_MODEL[0] || !model ||
+                   strcmp(model, CONFIG_WECHAT_USAGE_PRICE_MODEL) != 0 ||
+                   !cap_im_wechat_price(CONFIG_WECHAT_USAGE_INPUT_PRICE, &input_price) ||
+                   !cap_im_wechat_price(CONFIG_WECHAT_USAGE_OUTPUT_PRICE, &output_price)) {
+            snprintf(result + off, capacity - off, "\n费用：未配置当前模型价格。");
+        } else {
+            double cost = ((double)input * input_price + (double)output * output_price) / 1000000.0;
+            if (isfinite(cost)) {
+                snprintf(result + off, capacity - off, "\n估算费用：%.6f %s", cost, CONFIG_WECHAT_USAGE_CURRENCY);
+            } else {
+                snprintf(result + off, capacity - off, "\n费用：价格配置无效。");
+            }
+        }
+    }
+    return result;
 }
 
 static esp_err_t cap_im_wechat_http_event_handler(esp_http_client_event_t *event)
@@ -2106,23 +2156,32 @@ static esp_err_t cap_im_wechat_send_message_execute(const char *input_json,
         return ESP_ERR_INVALID_ARG;
     }
 
-    stage_mode = cap_im_wechat_stage_send_mode_for_event(chat_id, event_type);
+    uint32_t request_id = (uint32_t)cap_im_wechat_int_value(
+        cJSON_GetObjectItemCaseSensitive(root, "request_id"), 0);
+    const char *rule_id = cap_im_wechat_string_value(cJSON_GetObjectItemCaseSensitive(root, "rule_id"));
+    bool working_reply = rule_id && strcmp(rule_id, "im_any_message_working_reply") == 0;
+    stage_mode = cap_im_wechat_stage_send_mode_for_event(chat_id, event_type, request_id, working_reply);
     if (stage_mode == CAP_IM_WECHAT_STAGE_SKIP) {
-        ESP_LOGI(TAG,
-                 "skip agent_stage text for chat=%s after %d consecutive stage messages",
-                 chat_id,
-                 CAP_IM_WECHAT_STAGE_LIMIT);
+        ESP_LOGD(TAG, "skip thinking detail for chat=%s", chat_id);
         cJSON_Delete(root);
         strlcpy(output, "{\"ok\":true,\"skipped\":true}", output_size);
         return ESP_OK;
     }
 
-    if (stage_mode == CAP_IM_WECHAT_STAGE_SEND_LIMIT_NOTICE) {
-        message =
-            "Due to Weixin's limitation of supporting only up to 10 output messages, any subsequent step messages will be ignored.";
+    if (stage_mode == CAP_IM_WECHAT_STAGE_SEND_THINKING) {
+        message = "...";
     }
 
+    char *message_with_usage = NULL;
+    if (event_type && strcmp(event_type, "out_message") == 0) {
+        message_with_usage = cap_im_wechat_message_with_usage(
+            message, cJSON_GetObjectItemCaseSensitive(root, "usage"));
+        if (message_with_usage) {
+            message = message_with_usage;
+        }
+    }
     err = cap_im_wechat_send_text(chat_id, message);
+    free(message_with_usage);
     cJSON_Delete(root);
     if (err != ESP_OK) {
         return err;
