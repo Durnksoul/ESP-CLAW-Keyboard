@@ -65,7 +65,11 @@ static const char *APP_STARTUP_EVENT_KEY = "boot_completed";
     "Skills are user-facing functions, while Capabilities are internal functions used by the model. " \
     "When communicating with the user, refer to skills instead of Capabilities. " \
     "Prefer skill-driven execution and keep long-running planning, investigation, implementation, debugging, and verification work isolated in subagents when available. " \
-    "Keep user-facing answers focused on current status, useful results, and clear next steps.\n"
+    "Keep user-facing answers focused on current status, useful results, and clear next steps. " \
+    "This device has a 3x3 USB keyboard. Physical key IDs are fixed by position: top row 1, 2, 3; middle row 4, 5, 6; bottom row 7, 8, 9. " \
+    "Currently each key types the digit matching its ID. A key ID always names the physical switch, even if its output is remapped in the future. " \
+    "Interpret a user request about key number 1 through 9 as referring to that physical key. " \
+    "Changing key assignments or macros through chat is not implemented yet; do not claim any such change was applied.\n"
 
 #define APP_ROOT_AGENT_SYSTEM_PROMPT \
     "You are the root agent. Own the user-facing conversation and keep the session responsive. " \

@@ -40,11 +40,14 @@ static const gpio_num_t s_cols[KEYBOARD_COLS] = {
     GPIO_NUM_11, GPIO_NUM_10, GPIO_NUM_9,
 };
 
-/* Physical order: top row 1 2 3, middle 4 5 6, bottom 7 8 9. */
-static const uint8_t s_keycodes[KEYBOARD_KEYS] = {
-    HID_KEY_1, HID_KEY_2, HID_KEY_3,
-    HID_KEY_4, HID_KEY_5, HID_KEY_6,
-    HID_KEY_7, HID_KEY_8, HID_KEY_9,
+/* Physical key IDs are 1..9, left to right and top to bottom.
+ * IDs identify switch positions and stay unchanged if outputs are remapped.
+ * Index 0 is unused so the table can be addressed by key ID.
+ */
+static const uint8_t s_keycodes[KEYBOARD_KEYS + 1] = {
+    [1] = HID_KEY_1, [2] = HID_KEY_2, [3] = HID_KEY_3,
+    [4] = HID_KEY_4, [5] = HID_KEY_5, [6] = HID_KEY_6,
+    [7] = HID_KEY_7, [8] = HID_KEY_8, [9] = HID_KEY_9,
 };
 
 static const uint8_t s_hid_report_descriptor[] = {
@@ -104,7 +107,8 @@ static uint16_t scan_matrix(void)
         esp_rom_delay_us(20);
         for (unsigned col = 0; col < KEYBOARD_COLS; ++col) {
             if (gpio_get_level(s_cols[col]) == 0) {
-                pressed |= (uint16_t)1U << (row * KEYBOARD_COLS + col);
+                const unsigned key_id = row * KEYBOARD_COLS + col + 1;
+                pressed |= (uint16_t)1U << (key_id - 1);
             }
         }
         gpio_set_level(s_rows[row], 1);
@@ -116,10 +120,10 @@ static bool send_keyboard_report(uint16_t pressed)
 {
     uint8_t keycodes[HID_KEY_SLOTS] = {0};
     unsigned count = 0;
-    for (unsigned i = 0; i < KEYBOARD_KEYS; ++i) {
-        if (pressed & ((uint16_t)1U << i)) {
+    for (unsigned key_id = 1; key_id <= KEYBOARD_KEYS; ++key_id) {
+        if (pressed & ((uint16_t)1U << (key_id - 1))) {
             if (count < HID_KEY_SLOTS) {
-                keycodes[count] = s_keycodes[i];
+                keycodes[count] = s_keycodes[key_id];
             }
             ++count;
         }
