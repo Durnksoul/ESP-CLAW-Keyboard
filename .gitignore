@@ -48,3 +48,7 @@ pages/simulator/dist
 pages/simulator/*.log
 pages/simulator/public/runtime/*
 !pages/simulator/public/runtime/.gitkeep
+
+# Machine-specific ESP-IDF configuration
+idf-local.cmd
+CMakeUserPresets.json

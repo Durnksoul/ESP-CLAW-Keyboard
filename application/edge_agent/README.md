@@ -33,21 +33,54 @@
 
 ## Windows 开发环境与构建
 
-当前工程使用 ESP-IDF 5.5.4，选用的板级配置是 [esp32_s3_n16r8](boards/community/esp32_s3_n16r8/)。构建输出位于仓库根目录的 build/keyboard，而不是本目录的 build。
+各开发电脑均使用已安装的 **ESP-IDF 5.5.4**，无需安装到相同盘符或相同目录。板型为 [esp32_s3_n16r8](boards/community/esp32_s3_n16r8/)，构建输出位于仓库根目录的 `build/keyboard`。
 
-在仓库根目录运行：
+### 换电脑后首次开发
 
-    .\idf-claw.cmd build
+1. 克隆完整仓库，保留 `application/` 和仓库根目录 `components/` 等目录的相对位置。不要只复制 `application/edge_agent`。
+2. 打开该电脑现有的 **ESP-IDF 5.5.4 命令行终端**，或在 VS Code 中选择本机 ESP-IDF 环境后打开 ESP-IDF Terminal。使用 `idf.py --version` 确认版本。
+3. 在仓库根目录执行：
 
-该脚本内含当前开发机的 ESP-IDF 和 Python 绝对路径。在另一台电脑使用前，需要调整脚本中的路径并安装对应开发环境。已经配置好的本机工程无需为了普通构建重新生成板级配置。
+   ```powershell
+   .\idf-claw.cmd init
+   .\idf-claw.cmd build
+   ```
 
-新开发环境的板级生成方法：
+`init` 在当前电脑生成板级代码；首次 `build` 若发现板级默认配置不存在，也会自动生成。后续日常开发只需 `git pull` 后运行 `.\idf-claw.cmd build`。修改了板级 YAML，或移动了已有工作目录时，重新运行 `init`，并使用新的构建目录或备份后清理旧构建缓存，再构建。
 
-    cd application/edge_agent
-    idf.py bmgr -c ./boards -b esp32_s3_n16r8
-    idf.py build
+脚本使用当前终端的 `IDF_PATH`，调用该 SDK 的 `export.bat` 准备 Python 和编译工具。项目位置由脚本自身定位；不需要修改脚本中的盘符、用户名或工具安装路径。镜像、代理和串口按各电脑的实际情况设置。
 
-执行前需安装并启用 ESP-IDF 环境及 esp-bmgr-assist。通用安装与构建步骤见 [ESP-Claw 官方文档](https://esp-claw.com/zh-cn/reference-project/build-from-source/)。
+若 `init` 提示缺少 Board Manager，在已激活的 ESP-IDF 终端执行一次 `python -m pip install esp-bmgr-assist==0.8.3`。这是项目使用的板级辅助工具版本。
+
+### 可选：普通终端直接构建
+
+如果希望不手动打开 ESP-IDF 终端，可在仓库根目录创建 `idf-local.cmd`，填写**当前电脑**的路径。例如：
+
+```bat
+@echo off
+set "IDF_PATH=D:\your-sdk\esp-idf"
+rem 仅当工具目录不是默认位置时设置：
+rem set "IDF_TOOLS_PATH=E:\your-tools"
+rem 通常由 export.bat 自动选择 Python，无需自行填写：
+rem set "IDF_PYTHON_ENV_PATH=E:\your-python-environment"
+exit /b 0
+```
+
+然后直接运行 `.\idf-claw.cmd build`。脚本优先使用已激活终端的 `IDF_PATH`；未设置时才读取 `idf-local.cmd`。该文件被 Git 忽略，每台电脑独立保存，互不覆盖。
+
+### 哪些配置上传 Git
+
+| 上传并共享 | 每台电脑本地生成或配置，不上传 |
+| --- | --- |
+| 源码、板级 YAML、组件 `idf_component.yml` | `build/`、`managed_components/` |
+| `sdkconfig.defaults`、板级 `sdkconfig.defaults.board`、`sdkconfig.defaults.keyboard` | `sdkconfig`、`sdkconfig.old`、板级生成目录 `components/gen_bmgr_codes/` |
+| 不含本机路径的 `idf-claw.cmd`、`CMakePresets.json` | `idf-local.cmd`、`CMakeUserPresets.json`、`.vscode/` |
+
+`sdkconfig.defaults.keyboard` 保存本键盘当前的可共享固件配置，Wi-Fi 凭据留在本地 `sdkconfig` 或设备配置中。更改 `menuconfig` 后，需将希望跨电脑同步的设置整理到共享 defaults；仅修改被忽略的 `sdkconfig` 不会随 Git 同步。已有 `sdkconfig` 中的设置优先于 defaults，更新 defaults 不会自动覆盖已有本地设置。
+
+新电脑会重新生成包含本机绝对路径的 CMake 缓存、编译数据库和板级代码，这是正常行为；不要把这些生成文件从旧电脑复制过去。当前 `dependencies.lock` 也包含本机组件路径并被忽略，会重新解析组件；相同 ESP-IDF 版本并不保证未来解析到完全相同的第三方组件版本。
+
+VS Code 打开 `application/edge_agent`。在该电脑选择对应 ESP-IDF 环境及串口；个人路径保存在本机配置中。共享 CMake 预设继承已激活环境，使用 CMake Tools 时也应从 ESP-IDF 终端启动 VS Code；Windows 日常构建统一使用上述脚本。通用流程见 [ESP-Claw 官方文档](https://esp-claw.com/zh-cn/reference-project/build-from-source/)。
 
 ## 烧录和日志
 

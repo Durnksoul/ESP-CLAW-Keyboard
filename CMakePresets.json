@@ -1,8 +1,8 @@
 {
-  "version": 3,
+  "version": 4,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 21,
+    "minor": 23,
     "patch": 0
   },
   "configurePresets": [
@@ -13,16 +13,13 @@
       "binaryDir": "${fileDir}/build/keyboard",
       "cacheVariables": {
         "CCACHE_ENABLE": "0",
-        "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig"
+        "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig",
+        "SDKCONFIG_DEFAULTS": "${fileDir}/application/edge_agent/sdkconfig.defaults;${fileDir}/application/edge_agent/components/gen_bmgr_codes/board_manager.defaults;${fileDir}/application/edge_agent/sdkconfig.defaults.keyboard"
       },
       "generator": "Ninja",
       "environment": {
-        "IDF_PATH": "D:/esp/v5.5.4/esp-idf",
         "PYTHONUTF8": "1",
-        "IDF_TOOLS_PATH": "C:/Espressif",
-        "IDF_COMPONENT_STORAGE_URL": "https://components-file.espressif.cn",
-        "IDF_COMPONENT_API_TIMEOUT": "60",
-        "NO_PROXY": "localhost,127.0.0.1,components-file.espressif.cn"
+        "IDF_TARGET": "esp32s3"
       }
     },
     {
@@ -32,16 +29,13 @@
       "binaryDir": "${fileDir}/build/production",
       "cacheVariables": {
         "CCACHE_ENABLE": "0",
-        "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig"
+        "SDKCONFIG": "${fileDir}/application/edge_agent/sdkconfig",
+        "SDKCONFIG_DEFAULTS": "${fileDir}/application/edge_agent/sdkconfig.defaults;${fileDir}/application/edge_agent/components/gen_bmgr_codes/board_manager.defaults;${fileDir}/application/edge_agent/sdkconfig.defaults.keyboard"
       },
       "generator": "Ninja",
       "environment": {
-        "IDF_PATH": "D:/esp/v5.5.4/esp-idf",
         "PYTHONUTF8": "1",
-        "IDF_TOOLS_PATH": "C:/Espressif",
-        "IDF_COMPONENT_STORAGE_URL": "https://components-file.espressif.cn",
-        "IDF_COMPONENT_API_TIMEOUT": "60",
-        "NO_PROXY": "localhost,127.0.0.1,components-file.espressif.cn"
+        "IDF_TARGET": "esp32s3"
       }
     }
   ]

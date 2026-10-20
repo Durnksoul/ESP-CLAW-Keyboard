@@ -32,7 +32,16 @@
 2. 打开任意文本输入框，依次按九个键；当前默认输入为从左到右、从上到下的 **1–9**。
 3. 如需使用设备的联网、Web 控制台和微信消息通路，按 [ESP-Claw 官方配置教程](https://esp-claw.com/zh-cn/tutorial/web-config/)完成配置。烧录包含宏接口的新固件后，可按宏配置说明发送改键消息；AI 服务需支持工具调用，并启用 cap_keyboard 功能组。
 
-固件应用位于 `application/edge_agent`，使用 ESP-IDF 构建。本仓库的 `idf-claw.cmd` 是当前开发机的构建脚本，内含本机 ESP-IDF 和 Python 的绝对路径；在其他电脑使用前需要调整这些路径。ESP-Claw 的通用构建与配置说明见[官方文档](https://esp-claw.com/zh-cn/tutorial/)。
+固件应用位于 `application/edge_agent`。各开发电脑使用已安装的 **ESP-IDF 5.5.4**，SDK 和工具无需安装在相同路径。克隆完整仓库后，打开本机 ESP-IDF 终端，在仓库根目录执行：
+
+```powershell
+.\idf-claw.cmd init
+.\idf-claw.cmd build
+```
+
+后续开发只需 `git pull` 后执行 `.\idf-claw.cmd build`。脚本使用本机已激活的 ESP-IDF 环境，不再固定 SDK、Python 和工具链的安装位置。板级文件和构建缓存由各电脑生成，不上传 Git。
+
+本机环境配置、VS Code 设置及固件 defaults 的同步规则见 [跨电脑开发说明](application/edge_agent/README.md#windows-开发环境与构建)。
 
 ## 项目来源
 
